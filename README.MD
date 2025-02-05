@@ -2,6 +2,11 @@
 
 本文档提供了 `AutoDownloader` PowerShell 脚本的概述和使用指南。
 
+## 语言
+
+- [English](/Doc/README-EN.MD)
+- [简体中文](/README.MD)
+
 ## 参数
 
 - **owner**: GitHub 仓库的所有者
