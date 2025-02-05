@@ -94,15 +94,23 @@ function Get-Lastest-Release {
     param ()
     Write-Info "Getting latest release from URL: https://api.github.com/repos/$owner/$repo/releases/latest"
     try {
-        if (-not $pat) {
-            $release = Invoke-WebRequest -Uri "https://api.github.com/repos/$owner/$repo/releases/latest" -Proxy $proxy -ErrorAction Stop | ConvertFrom-Json
+        $uri = "https://api.github.com/repos/$owner/$repo/releases/latest"
+        $headers = @{}
+        if ($pat) {
+            $headers.Authorization = "token $pat"
         }
-        else {
-            $headers = @{
-                Authorization = "token $pat"
-            }
-            $release = Invoke-WebRequest -Uri "https://api.github.com/repos/$owner/$repo/releases/latest" -Headers $headers -Proxy $proxy -ErrorAction Stop | ConvertFrom-Json
+
+        $invokeParams = @{
+            Uri         = $uri
+            Headers     = $headers
+            ErrorAction = 'Stop'
         }
+
+        if ($proxy) {
+            $invokeParams.Proxy = $proxy
+        }
+
+        $release = Invoke-WebRequest @invokeParams | ConvertFrom-Json
     }
     catch {
         $err = $_ | ConvertFrom-Json
@@ -121,15 +129,23 @@ function Invoke-Download-File {
     )
     Write-Info "Downloading $url to $output"
     try {
-        if (-not $pat) {
-            Invoke-WebRequest -Uri $url -OutFile $output -Proxy $proxy -PassThru -ErrorAction Stop
+        $headers = @{}
+        if ($pat) {
+            $headers.Authorization = "token $pat"
         }
-        else {
-            $headers = @{
-                Authorization = "token $pat"
-            }
-            Invoke-WebRequest -Uri $url -OutFile $output -Headers $headers -Proxy $proxy -PassThru -ErrorAction Stop
+
+        $invokeParams = @{
+            Uri     = $url
+            OutFile = $output
+            Headers = $headers
+            ErrorAction = 'Stop'
         }
+
+        if ($proxy) {
+            $invokeParams.Proxy = $proxy
+        }
+
+        Invoke-WebRequest @invokeParams
     }
     catch {
         $message = $_.Exception.Message
