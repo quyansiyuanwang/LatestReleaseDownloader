@@ -30,13 +30,17 @@ function Test-Path-Exists {
     param (
         [string]$path,
         [string]$message,
-        [bool]$necessary = $true
+        [bool]$necessary = $true,
+        [bool]$reverse = $false
     )
     $level = if ($necessary) { "ERR" } else { "WARN" }
     if (Test-Path "$path") {
         Writer -message "$message" -level $level
         $delete = Read-Host "Enter Your Choice (Y/N)"
-        if ($delete.ToUpper() -eq "Y") {
+        if ($reverse) {
+            $yesSignal = if ($reverse) { "N" } else { "Y" }
+        }
+        if ($delete.ToUpper() -eq $yesSignal) {
             Remove-Item -Path "$path" -Force -Recurse
             Write-Info "Deleted $path"
         }
@@ -159,25 +163,27 @@ function Invoke-Download-File {
 function Move-Zip-Content-to-Root {
     # Move zip content
     param ()
-    $zip_content = Get-ChildItem -Path "$repo" -Directory
-    if ($zip_content.Count -eq 1) {
-        $zip_content_name = $zip_content.Name
-        $items_to_move = Get-ChildItem -Path "$repo\$zip_content_name\*"
-        foreach ($item in $items_to_move) {
-            $ignore = $false
-            foreach ($pattern in $ignoreFolders) {
-                if ($item.FullName -match $pattern) {
-                    $ignore = $true
-                    break
-                }
-            }
-            if (-not $ignore) {
-                Move-Item -Path $item.FullName -Destination "$repo" -Force
+    $zip_content = Get-ChildItem -Path "$repo" -Directory | Where-Object { $_.Name -like "$owner-$repo-*" }
+    $zip_content_name = $zip_content.Name
+    $items_to_move = Get-ChildItem -Path "$repo\$zip_content_name\*"
+    foreach ($item in $items_to_move) {
+        $ignore = $false
+        foreach ($pattern in $ignoreFolders) {
+            if ($item.FullName -match $pattern) {
+                $ignore = $true
+                break
             }
         }
-        Remove-Item -Path "$repo\$zip_content_name" -Force -Recurse
+        if (-not $ignore) {
+            if (Test-Path -Path "$repo\$($item.Name)") {
+                Remove-Item -Path "$repo\$($item.Name)" -Force -Recurse
+            }
+            Move-Item -Path $item.FullName -Destination "$repo" -Force
+        }
     }
+    Remove-Item -Path "$repo\$zip_content_name" -Force -Recurse
 }
+
 
 # ------------------------------ pre-check --------------------------------
 
@@ -192,8 +198,8 @@ Write-Info "ignoreFolders: $ignoreFolders"
 
 # Check if the folder exists
 Test-Path-Exists -path "$repo" `
-    -message "The folder $repo already exists, you must delete it first, or the script can't continue" `
-    -necessary $true
+    -message "The folder $repo already exists, do you want to overwrite it?" `
+    -necessary $false
 
 # Get latest
 $release = Get-Lastest-Release
